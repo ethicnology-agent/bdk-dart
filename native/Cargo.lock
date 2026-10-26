@@ -148,8 +148,8 @@ dependencies = [
 
 [[package]]
 name = "bdk-ffi"
-version = "3.1.1"
-source = "git+https://github.com/bitcoindevkit/bdk-ffi.git?tag=v3.1.1#1c5f4863c6a53cc9d063d34c4e13c91fea5c58de"
+version = "3.2.0-alpha.0"
+source = "git+https://github.com/ethicnology/bdk-ffi.git?rev=3a7d70219f02b2b49b5e8764f52d7590f7333489#3a7d70219f02b2b49b5e8764f52d7590f7333489"
 dependencies = [
  "bdk_electrum",
  "bdk_esplora",
@@ -173,10 +173,16 @@ dependencies = [
 ]
 
 [[package]]
-name = "bdk_core"
-version = "0.6.3"
+name = "bdk_coin_select"
+version = "0.4.1"
 source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "cb3028782f6bf14a6df987244333d34e6b272b5a40a53e4879ec2dfd82275a3a"
+checksum = "43064fa3dd1d3a8b24079cfcb5ede6b785857edc782277f17a1736511ccc1916"
+
+[[package]]
+name = "bdk_core"
+version = "0.6.4"
+source = "registry+https://github.com/rust-lang/crates.io-index"
+checksum = "6cbb1373ac1fafacd7adab91f58ab18d455dfb6434d47a647e75315613599cad"
 dependencies = [
  "bitcoin",
  "hashbrown 0.14.5",
@@ -195,9 +201,9 @@ dependencies = [
 
 [[package]]
 name = "bdk_electrum"
-version = "0.24.0"
+version = "0.24.1"
 source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "00a9846105bf6e751adbb6946b000ff919ce24a15a941cbfe68485549b552a9c"
+checksum = "97455296f4f798250eaa5f7aa51fc34298a72fb661784b4c52c190d730ad04f7"
 dependencies = [
  "bdk_core",
  "electrum-client",
@@ -205,9 +211,9 @@ dependencies = [
 
 [[package]]
 name = "bdk_esplora"
-version = "0.22.2"
+version = "0.22.3"
 source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "83986307ea92997c3d051e8c306af8115a05add601e22acb7c1903008e6b614e"
+checksum = "5ac04fdd76362dccf600ccf338ff6be7ad6a0d064def5969e4b33c171718e913"
 dependencies = [
  "bdk_core",
  "esplora-client",
@@ -224,12 +230,25 @@ dependencies = [
 ]
 
 [[package]]
-name = "bdk_wallet"
-version = "3.1.0"
+name = "bdk_tx"
+version = "0.2.0"
 source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "1284fb23acc3e3022673712b55f4d5ce7e38aadc2c49bbef830dc3935f0a3289"
+checksum = "40406c9952f15ed30893826bd83b7d67b6bf11d56574c1efc3db3a5d70cdfcea"
+dependencies = [
+ "bdk_coin_select",
+ "miniscript",
+ "rand",
+ "rand_core",
+]
+
+[[package]]
+name = "bdk_wallet"
+version = "3.2.0"
+source = "registry+https://github.com/rust-lang/crates.io-index"
+checksum = "163ec032e0a5a795ded2a7e47fc40a887c75743326483147e4465159c53abdc4"
 dependencies = [
  "bdk_chain",
+ "bdk_tx",
  "bip39",
  "bitcoin",
  "miniscript",

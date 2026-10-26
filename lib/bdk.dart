@@ -3426,6 +3426,63 @@ class FfiConverterTx {
   }
 }
 
+class TxAnchor {
+  final Txid txid;
+  final ConfirmationBlockTime anchor;
+  TxAnchor({required this.txid, required this.anchor});
+}
+
+class FfiConverterTxAnchor {
+  static TxAnchor lift(RustBuffer buf) {
+    return FfiConverterTxAnchor.read(buf.asUint8List()).value;
+  }
+
+  static LiftRetVal<TxAnchor> read(Uint8List buf) {
+    int new_offset = buf.offsetInBytes;
+    final txid_lifted = Txid.read(Uint8List.view(buf.buffer, new_offset));
+    final txid = txid_lifted.value;
+    new_offset += txid_lifted.bytesRead;
+    final anchor_lifted = FfiConverterConfirmationBlockTime.read(
+      Uint8List.view(buf.buffer, new_offset),
+    );
+    final anchor = anchor_lifted.value;
+    new_offset += anchor_lifted.bytesRead;
+    return LiftRetVal(
+      TxAnchor(txid: txid, anchor: anchor),
+      new_offset - buf.offsetInBytes,
+    );
+  }
+
+  static RustBuffer lower(TxAnchor value) {
+    final total_length =
+        Txid.allocationSize(value.txid) +
+        FfiConverterConfirmationBlockTime.allocationSize(value.anchor) +
+        0;
+    final buf = Uint8List(total_length);
+    write(value, buf);
+    return toRustBuffer(buf);
+  }
+
+  static int write(TxAnchor value, Uint8List buf) {
+    int new_offset = buf.offsetInBytes;
+    new_offset += Txid.write(
+      value.txid,
+      Uint8List.view(buf.buffer, new_offset),
+    );
+    new_offset += FfiConverterConfirmationBlockTime.write(
+      value.anchor,
+      Uint8List.view(buf.buffer, new_offset),
+    );
+    return new_offset - buf.offsetInBytes;
+  }
+
+  static int allocationSize(TxAnchor value) {
+    return Txid.allocationSize(value.txid) +
+        FfiConverterConfirmationBlockTime.allocationSize(value.anchor) +
+        0;
+  }
+}
+
 class TxDetails {
   final Txid txid;
   final Amount sent;
@@ -21980,6 +22037,8 @@ abstract class ElectrumClientInterface {
     required bool fetchPrevTxouts,
   });
   void ping();
+  void populateAnchorCache({required List<TxAnchor> anchors});
+  void populateTxCache({required List<Transaction> transactions});
   double relayFee();
   ServerFeaturesRes serverFeatures();
   Update sync_({
@@ -22138,6 +22197,26 @@ class ElectrumClient implements ElectrumClientInterface {
     }, electrumExceptionErrorHandler);
   }
 
+  void populateAnchorCache({required List<TxAnchor> anchors}) {
+    return rustCall((status) {
+      uniffi_bdkffi_fn_method_electrumclient_populate_anchor_cache(
+        uniffiClonePointer(),
+        FfiConverterSequenceTxAnchor.lower(anchors),
+        status,
+      );
+    }, null);
+  }
+
+  void populateTxCache({required List<Transaction> transactions}) {
+    return rustCall((status) {
+      uniffi_bdkffi_fn_method_electrumclient_populate_tx_cache(
+        uniffiClonePointer(),
+        FfiConverterSequenceTransaction.lower(transactions),
+        status,
+      );
+    }, null);
+  }
+
   double relayFee() {
     return rustCallWithLifter(
       (status) => uniffi_bdkffi_fn_method_electrumclient_relay_fee(
@@ -22236,15 +22315,19 @@ class EsploraClient implements EsploraClientInterface {
   EsploraClient._(this._ptr) {
     _EsploraClientFinalizer.attach(this, _ptr, detach: this);
   }
-  EsploraClient({required String url, required String? proxy})
-    : _ptr = rustCall(
-        (status) => uniffi_bdkffi_fn_constructor_esploraclient_new(
-          FfiConverterString.lower(url),
-          FfiConverterOptionalString.lower(proxy),
-          status,
-        ),
-        null,
-      ) {
+  EsploraClient({
+    required String url,
+    required String? proxy,
+    required int? timeout,
+  }) : _ptr = rustCall(
+         (status) => uniffi_bdkffi_fn_constructor_esploraclient_new(
+           FfiConverterString.lower(url),
+           FfiConverterOptionalString.lower(proxy),
+           FfiConverterOptionalUInt64.lower(timeout),
+           status,
+         ),
+         null,
+       ) {
     _EsploraClientFinalizer.attach(this, _ptr, detach: this);
   }
   factory EsploraClient.lift(Pointer<Void> ptr) {
@@ -30568,6 +30651,49 @@ class FfiConverterSequenceTx {
   }
 }
 
+class FfiConverterSequenceTxAnchor {
+  static List<TxAnchor> lift(RustBuffer buf) {
+    return FfiConverterSequenceTxAnchor.read(buf.asUint8List()).value;
+  }
+
+  static LiftRetVal<List<TxAnchor>> read(Uint8List buf) {
+    List<TxAnchor> res = [];
+    final length = buf.buffer.asByteData(buf.offsetInBytes).getInt32(0);
+    int offset = buf.offsetInBytes + 4;
+    for (var i = 0; i < length; i++) {
+      final ret = FfiConverterTxAnchor.read(Uint8List.view(buf.buffer, offset));
+      offset += ret.bytesRead;
+      res.add(ret.value);
+    }
+    return LiftRetVal(res, offset - buf.offsetInBytes);
+  }
+
+  static int write(List<TxAnchor> value, Uint8List buf) {
+    buf.buffer.asByteData(buf.offsetInBytes).setInt32(0, value.length);
+    int offset = buf.offsetInBytes + 4;
+    for (var i = 0; i < value.length; i++) {
+      offset += FfiConverterTxAnchor.write(
+        value[i],
+        Uint8List.view(buf.buffer, offset),
+      );
+    }
+    return offset - buf.offsetInBytes;
+  }
+
+  static int allocationSize(List<TxAnchor> value) {
+    return value
+            .map((l) => FfiConverterTxAnchor.allocationSize(l))
+            .fold(0, (a, b) => a + b) +
+        4;
+  }
+
+  static RustBuffer lower(List<TxAnchor> value) {
+    final buf = Uint8List(allocationSize(value));
+    write(value, buf);
+    return toRustBuffer(buf);
+  }
+}
+
 class FfiConverterSequenceTxIn {
   static List<TxIn> lift(RustBuffer buf) {
     return FfiConverterSequenceTxIn.read(buf.asUint8List()).value;
@@ -32932,6 +33058,24 @@ external void uniffi_bdkffi_fn_method_electrumclient_ping(
   Pointer<RustCallStatus> uniffiStatus,
 );
 
+@Native<Void Function(Pointer<Void>, RustBuffer, Pointer<RustCallStatus>)>(
+  assetId: _uniffiAssetId,
+)
+external void uniffi_bdkffi_fn_method_electrumclient_populate_anchor_cache(
+  Pointer<Void> ptr,
+  RustBuffer anchors,
+  Pointer<RustCallStatus> uniffiStatus,
+);
+
+@Native<Void Function(Pointer<Void>, RustBuffer, Pointer<RustCallStatus>)>(
+  assetId: _uniffiAssetId,
+)
+external void uniffi_bdkffi_fn_method_electrumclient_populate_tx_cache(
+  Pointer<Void> ptr,
+  RustBuffer transactions,
+  Pointer<RustCallStatus> uniffiStatus,
+);
+
 @Native<Double Function(Pointer<Void>, Pointer<RustCallStatus>)>(
   assetId: _uniffiAssetId,
 )
@@ -33001,11 +33145,17 @@ external void uniffi_bdkffi_fn_free_esploraclient(
 );
 
 @Native<
-  Pointer<Void> Function(RustBuffer, RustBuffer, Pointer<RustCallStatus>)
+  Pointer<Void> Function(
+    RustBuffer,
+    RustBuffer,
+    RustBuffer,
+    Pointer<RustCallStatus>,
+  )
 >(assetId: _uniffiAssetId)
 external Pointer<Void> uniffi_bdkffi_fn_constructor_esploraclient_new(
   RustBuffer url,
   RustBuffer proxy,
+  RustBuffer timeout,
   Pointer<RustCallStatus> uniffiStatus,
 );
 
@@ -36586,6 +36736,13 @@ external int uniffi_bdkffi_checksum_method_electrumclient_full_scan();
 external int uniffi_bdkffi_checksum_method_electrumclient_ping();
 
 @Native<Uint16 Function()>(assetId: _uniffiAssetId)
+external int
+uniffi_bdkffi_checksum_method_electrumclient_populate_anchor_cache();
+
+@Native<Uint16 Function()>(assetId: _uniffiAssetId)
+external int uniffi_bdkffi_checksum_method_electrumclient_populate_tx_cache();
+
+@Native<Uint16 Function()>(assetId: _uniffiAssetId)
 external int uniffi_bdkffi_checksum_method_electrumclient_relay_fee();
 
 @Native<Uint16 Function()>(assetId: _uniffiAssetId)
@@ -37619,6 +37776,14 @@ void _checkApiChecksums() {
   if (uniffi_bdkffi_checksum_method_electrumclient_ping() != 34274) {
     throw UniffiInternalError.panicked("UniFFI API checksum mismatch");
   }
+  if (uniffi_bdkffi_checksum_method_electrumclient_populate_anchor_cache() !=
+      48774) {
+    throw UniffiInternalError.panicked("UniFFI API checksum mismatch");
+  }
+  if (uniffi_bdkffi_checksum_method_electrumclient_populate_tx_cache() !=
+      58622) {
+    throw UniffiInternalError.panicked("UniFFI API checksum mismatch");
+  }
   if (uniffi_bdkffi_checksum_method_electrumclient_relay_fee() != 22615) {
     throw UniffiInternalError.panicked("UniFFI API checksum mismatch");
   }
@@ -38307,7 +38472,7 @@ void _checkApiChecksums() {
   if (uniffi_bdkffi_checksum_constructor_electrumclient_new() != 19489) {
     throw UniffiInternalError.panicked("UniFFI API checksum mismatch");
   }
-  if (uniffi_bdkffi_checksum_constructor_esploraclient_new() != 43561) {
+  if (uniffi_bdkffi_checksum_constructor_esploraclient_new() != 4296) {
     throw UniffiInternalError.panicked("UniFFI API checksum mismatch");
   }
   if (uniffi_bdkffi_checksum_constructor_derivationpath_master() != 22470) {
