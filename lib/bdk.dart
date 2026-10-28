@@ -16857,12 +16857,24 @@ class FfiConverterInfo {
           lifted.bytesRead - subview.offsetInBytes + 4,
         );
       case 3:
-        final lifted = ProgressInfo.read(subview);
+        final lifted = NewChainHeightInfo.read(subview);
         return LiftRetVal<Info>(
           lifted.value,
           lifted.bytesRead - subview.offsetInBytes + 4,
         );
       case 4:
+        final lifted = CfHeadersProgressInfo.read(subview);
+        return LiftRetVal<Info>(
+          lifted.value,
+          lifted.bytesRead - subview.offsetInBytes + 4,
+        );
+      case 5:
+        final lifted = FiltersProgressInfo.read(subview);
+        return LiftRetVal<Info>(
+          lifted.value,
+          lifted.bytesRead - subview.offsetInBytes + 4,
+        );
+      case 6:
         final lifted = BlockReceivedInfo.read(subview);
         return LiftRetVal<Info>(
           lifted.value,
@@ -16945,28 +16957,77 @@ class SuccessfulHandshakeInfo extends Info {
   }
 }
 
-class ProgressInfo extends Info {
+class NewChainHeightInfo extends Info {
   final int chainHeight;
-  final double filtersDownloadedPercent;
-  ProgressInfo({
-    required int this.chainHeight,
-    required double this.filtersDownloadedPercent,
-  });
-  ProgressInfo._(int this.chainHeight, double this.filtersDownloadedPercent);
-  static LiftRetVal<ProgressInfo> read(Uint8List buf) {
+  NewChainHeightInfo(int this.chainHeight);
+  NewChainHeightInfo._(int this.chainHeight);
+  static LiftRetVal<NewChainHeightInfo> read(Uint8List buf) {
     int new_offset = buf.offsetInBytes;
     final chainHeight_lifted = FfiConverterUInt32.read(
       Uint8List.view(buf.buffer, new_offset),
     );
     final chainHeight = chainHeight_lifted.value;
     new_offset += chainHeight_lifted.bytesRead;
-    final filtersDownloadedPercent_lifted = FfiConverterDouble32.read(
+    return LiftRetVal(NewChainHeightInfo._(chainHeight), new_offset);
+  }
+
+  @override
+  RustBuffer lower() {
+    final buf = Uint8List(allocationSize());
+    write(buf);
+    return toRustBuffer(buf);
+  }
+
+  @override
+  int allocationSize() {
+    return FfiConverterUInt32.allocationSize(chainHeight) + 4;
+  }
+
+  @override
+  int write(Uint8List buf) {
+    buf.buffer.asByteData(buf.offsetInBytes).setInt32(0, 3);
+    int new_offset = buf.offsetInBytes + 4;
+    new_offset += FfiConverterUInt32.write(
+      chainHeight,
       Uint8List.view(buf.buffer, new_offset),
     );
-    final filtersDownloadedPercent = filtersDownloadedPercent_lifted.value;
-    new_offset += filtersDownloadedPercent_lifted.bytesRead;
+    return new_offset;
+  }
+}
+
+class CfHeadersProgressInfo extends Info {
+  final int chainHeight;
+  final int headersHeight;
+  final double fraction;
+  CfHeadersProgressInfo({
+    required int this.chainHeight,
+    required int this.headersHeight,
+    required double this.fraction,
+  });
+  CfHeadersProgressInfo._(
+    int this.chainHeight,
+    int this.headersHeight,
+    double this.fraction,
+  );
+  static LiftRetVal<CfHeadersProgressInfo> read(Uint8List buf) {
+    int new_offset = buf.offsetInBytes;
+    final chainHeight_lifted = FfiConverterUInt32.read(
+      Uint8List.view(buf.buffer, new_offset),
+    );
+    final chainHeight = chainHeight_lifted.value;
+    new_offset += chainHeight_lifted.bytesRead;
+    final headersHeight_lifted = FfiConverterUInt32.read(
+      Uint8List.view(buf.buffer, new_offset),
+    );
+    final headersHeight = headersHeight_lifted.value;
+    new_offset += headersHeight_lifted.bytesRead;
+    final fraction_lifted = FfiConverterDouble32.read(
+      Uint8List.view(buf.buffer, new_offset),
+    );
+    final fraction = fraction_lifted.value;
+    new_offset += fraction_lifted.bytesRead;
     return LiftRetVal(
-      ProgressInfo._(chainHeight, filtersDownloadedPercent),
+      CfHeadersProgressInfo._(chainHeight, headersHeight, fraction),
       new_offset,
     );
   }
@@ -16981,20 +17042,97 @@ class ProgressInfo extends Info {
   @override
   int allocationSize() {
     return FfiConverterUInt32.allocationSize(chainHeight) +
-        FfiConverterDouble32.allocationSize(filtersDownloadedPercent) +
+        FfiConverterUInt32.allocationSize(headersHeight) +
+        FfiConverterDouble32.allocationSize(fraction) +
         4;
   }
 
   @override
   int write(Uint8List buf) {
-    buf.buffer.asByteData(buf.offsetInBytes).setInt32(0, 3);
+    buf.buffer.asByteData(buf.offsetInBytes).setInt32(0, 4);
     int new_offset = buf.offsetInBytes + 4;
     new_offset += FfiConverterUInt32.write(
       chainHeight,
       Uint8List.view(buf.buffer, new_offset),
     );
+    new_offset += FfiConverterUInt32.write(
+      headersHeight,
+      Uint8List.view(buf.buffer, new_offset),
+    );
     new_offset += FfiConverterDouble32.write(
-      filtersDownloadedPercent,
+      fraction,
+      Uint8List.view(buf.buffer, new_offset),
+    );
+    return new_offset;
+  }
+}
+
+class FiltersProgressInfo extends Info {
+  final int chainHeight;
+  final int filtersHeight;
+  final double fraction;
+  FiltersProgressInfo({
+    required int this.chainHeight,
+    required int this.filtersHeight,
+    required double this.fraction,
+  });
+  FiltersProgressInfo._(
+    int this.chainHeight,
+    int this.filtersHeight,
+    double this.fraction,
+  );
+  static LiftRetVal<FiltersProgressInfo> read(Uint8List buf) {
+    int new_offset = buf.offsetInBytes;
+    final chainHeight_lifted = FfiConverterUInt32.read(
+      Uint8List.view(buf.buffer, new_offset),
+    );
+    final chainHeight = chainHeight_lifted.value;
+    new_offset += chainHeight_lifted.bytesRead;
+    final filtersHeight_lifted = FfiConverterUInt32.read(
+      Uint8List.view(buf.buffer, new_offset),
+    );
+    final filtersHeight = filtersHeight_lifted.value;
+    new_offset += filtersHeight_lifted.bytesRead;
+    final fraction_lifted = FfiConverterDouble32.read(
+      Uint8List.view(buf.buffer, new_offset),
+    );
+    final fraction = fraction_lifted.value;
+    new_offset += fraction_lifted.bytesRead;
+    return LiftRetVal(
+      FiltersProgressInfo._(chainHeight, filtersHeight, fraction),
+      new_offset,
+    );
+  }
+
+  @override
+  RustBuffer lower() {
+    final buf = Uint8List(allocationSize());
+    write(buf);
+    return toRustBuffer(buf);
+  }
+
+  @override
+  int allocationSize() {
+    return FfiConverterUInt32.allocationSize(chainHeight) +
+        FfiConverterUInt32.allocationSize(filtersHeight) +
+        FfiConverterDouble32.allocationSize(fraction) +
+        4;
+  }
+
+  @override
+  int write(Uint8List buf) {
+    buf.buffer.asByteData(buf.offsetInBytes).setInt32(0, 5);
+    int new_offset = buf.offsetInBytes + 4;
+    new_offset += FfiConverterUInt32.write(
+      chainHeight,
+      Uint8List.view(buf.buffer, new_offset),
+    );
+    new_offset += FfiConverterUInt32.write(
+      filtersHeight,
+      Uint8List.view(buf.buffer, new_offset),
+    );
+    new_offset += FfiConverterDouble32.write(
+      fraction,
       Uint8List.view(buf.buffer, new_offset),
     );
     return new_offset;
@@ -17029,7 +17167,7 @@ class BlockReceivedInfo extends Info {
 
   @override
   int write(Uint8List buf) {
-    buf.buffer.asByteData(buf.offsetInBytes).setInt32(0, 4);
+    buf.buffer.asByteData(buf.offsetInBytes).setInt32(0, 6);
     int new_offset = buf.offsetInBytes + 4;
     new_offset += FfiConverterString.write(
       v0,
@@ -23131,7 +23269,6 @@ abstract class CbfBuilderInterface {
     required int response,
   });
   CbfBuilder connections({required int connections});
-  CbfBuilder dataDir({required String dataDir});
   CbfBuilder onlyConfiguredPeers();
   CbfBuilder peers({required List<Peer> peers});
   CbfBuilder scanType({required ScanType scanType});
@@ -23221,18 +23358,6 @@ class CbfBuilder implements CbfBuilderInterface {
       (status) => uniffi_bdkffi_fn_method_cbfbuilder_connections(
         uniffiClonePointer(),
         FfiConverterUInt8.lower(connections),
-        status,
-      ),
-      CbfBuilder.lift,
-      null,
-    );
-  }
-
-  CbfBuilder dataDir({required String dataDir}) {
-    return rustCallWithLifter(
-      (status) => uniffi_bdkffi_fn_method_cbfbuilder_data_dir(
-        uniffiClonePointer(),
-        FfiConverterString.lower(dataDir),
         status,
       ),
       CbfBuilder.lift,
@@ -23470,6 +23595,7 @@ class CbfClient implements CbfClientInterface {
 }
 
 abstract class CbfNodeInterface {
+  Future<bool> awaitTermination({required int timeoutMillis});
   void run();
 }
 
@@ -23512,6 +23638,20 @@ class CbfNode implements CbfNodeInterface {
   void dispose() {
     _CbfNodeFinalizer.detach(this);
     rustCall((status) => uniffi_bdkffi_fn_free_cbfnode(_ptr, status));
+  }
+
+  Future<bool> awaitTermination({required int timeoutMillis}) {
+    return uniffiRustCallAsync(
+      () => uniffi_bdkffi_fn_method_cbfnode_await_termination(
+        uniffiClonePointer(),
+        FfiConverterUInt64.lower(timeoutMillis),
+      ),
+      ffi_bdkffi_rust_future_poll_i8,
+      ffi_bdkffi_rust_future_complete_i8,
+      ffi_bdkffi_rust_future_free_i8,
+      FfiConverterBool.lift,
+      null,
+    );
   }
 
   void run() {
@@ -33718,15 +33858,6 @@ external Pointer<Void> uniffi_bdkffi_fn_method_cbfbuilder_connections(
   Pointer<RustCallStatus> uniffiStatus,
 );
 
-@Native<
-  Pointer<Void> Function(Pointer<Void>, RustBuffer, Pointer<RustCallStatus>)
->(assetId: _uniffiAssetId)
-external Pointer<Void> uniffi_bdkffi_fn_method_cbfbuilder_data_dir(
-  Pointer<Void> ptr,
-  RustBuffer data_dir,
-  Pointer<RustCallStatus> uniffiStatus,
-);
-
 @Native<Pointer<Void> Function(Pointer<Void>, Pointer<RustCallStatus>)>(
   assetId: _uniffiAssetId,
 )
@@ -33867,6 +33998,12 @@ external Pointer<Void> uniffi_bdkffi_fn_clone_cbfnode(
 external void uniffi_bdkffi_fn_free_cbfnode(
   Pointer<Void> handle,
   Pointer<RustCallStatus> uniffiStatus,
+);
+
+@Native<Pointer<Void> Function(Pointer<Void>, Uint64)>(assetId: _uniffiAssetId)
+external Pointer<Void> uniffi_bdkffi_fn_method_cbfnode_await_termination(
+  Pointer<Void> ptr,
+  int timeout_millis,
 );
 
 @Native<Void Function(Pointer<Void>, Pointer<RustCallStatus>)>(
@@ -36870,9 +37007,6 @@ uniffi_bdkffi_checksum_method_cbfbuilder_configure_timeout_millis();
 external int uniffi_bdkffi_checksum_method_cbfbuilder_connections();
 
 @Native<Uint16 Function()>(assetId: _uniffiAssetId)
-external int uniffi_bdkffi_checksum_method_cbfbuilder_data_dir();
-
-@Native<Uint16 Function()>(assetId: _uniffiAssetId)
 external int uniffi_bdkffi_checksum_method_cbfbuilder_only_configured_peers();
 
 @Native<Uint16 Function()>(assetId: _uniffiAssetId)
@@ -36916,6 +37050,9 @@ external int uniffi_bdkffi_checksum_method_cbfclient_shutdown();
 
 @Native<Uint16 Function()>(assetId: _uniffiAssetId)
 external int uniffi_bdkffi_checksum_method_cbfclient_update();
+
+@Native<Uint16 Function()>(assetId: _uniffiAssetId)
+external int uniffi_bdkffi_checksum_method_cbfnode_await_termination();
 
 @Native<Uint16 Function()>(assetId: _uniffiAssetId)
 external int uniffi_bdkffi_checksum_method_cbfnode_run();
@@ -37920,9 +38057,6 @@ void _checkApiChecksums() {
   if (uniffi_bdkffi_checksum_method_cbfbuilder_connections() != 48760) {
     throw UniffiInternalError.panicked("UniFFI API checksum mismatch");
   }
-  if (uniffi_bdkffi_checksum_method_cbfbuilder_data_dir() != 59862) {
-    throw UniffiInternalError.panicked("UniFFI API checksum mismatch");
-  }
   if (uniffi_bdkffi_checksum_method_cbfbuilder_only_configured_peers() !=
       11621) {
     throw UniffiInternalError.panicked("UniFFI API checksum mismatch");
@@ -37930,7 +38064,7 @@ void _checkApiChecksums() {
   if (uniffi_bdkffi_checksum_method_cbfbuilder_peers() != 25020) {
     throw UniffiInternalError.panicked("UniFFI API checksum mismatch");
   }
-  if (uniffi_bdkffi_checksum_method_cbfbuilder_scan_type() != 45058) {
+  if (uniffi_bdkffi_checksum_method_cbfbuilder_scan_type() != 37594) {
     throw UniffiInternalError.panicked("UniFFI API checksum mismatch");
   }
   if (uniffi_bdkffi_checksum_method_cbfbuilder_socks5_proxy() != 59058) {
@@ -37945,7 +38079,7 @@ void _checkApiChecksums() {
   if (uniffi_bdkffi_checksum_method_cbfclient_connect() != 29023) {
     throw UniffiInternalError.panicked("UniFFI API checksum mismatch");
   }
-  if (uniffi_bdkffi_checksum_method_cbfclient_is_running() != 3810) {
+  if (uniffi_bdkffi_checksum_method_cbfclient_is_running() != 45435) {
     throw UniffiInternalError.panicked("UniFFI API checksum mismatch");
   }
   if (uniffi_bdkffi_checksum_method_cbfclient_lookup_host() != 29744) {
@@ -37964,13 +38098,16 @@ void _checkApiChecksums() {
   if (uniffi_bdkffi_checksum_method_cbfclient_peer_info() != 62164) {
     throw UniffiInternalError.panicked("UniFFI API checksum mismatch");
   }
-  if (uniffi_bdkffi_checksum_method_cbfclient_shutdown() != 52518) {
+  if (uniffi_bdkffi_checksum_method_cbfclient_shutdown() != 24919) {
     throw UniffiInternalError.panicked("UniFFI API checksum mismatch");
   }
   if (uniffi_bdkffi_checksum_method_cbfclient_update() != 43120) {
     throw UniffiInternalError.panicked("UniFFI API checksum mismatch");
   }
-  if (uniffi_bdkffi_checksum_method_cbfnode_run() != 28472) {
+  if (uniffi_bdkffi_checksum_method_cbfnode_await_termination() != 23789) {
+    throw UniffiInternalError.panicked("UniFFI API checksum mismatch");
+  }
+  if (uniffi_bdkffi_checksum_method_cbfnode_run() != 60067) {
     throw UniffiInternalError.panicked("UniFFI API checksum mismatch");
   }
   if (uniffi_bdkffi_checksum_method_signerscontainer_is_empty() != 1291) {
