@@ -116,6 +116,35 @@ Optional env vars:
 - `BDK_DART_ELECTRUM_SOCKS5`
 - `BDK_DART_ESPLORA_PROXY`
 
+### Long-running compact filter node
+
+Keep one `CbfNode` running for the selected wallets and apply each batch returned by `CbfClient.updates()`. The keys are the wallets' external descriptor identifiers. `update()` remains available for a single-wallet node created with `build(wallet: wallet)`.
+
+Create recovering wallets with `lookahead: 1000` to scan that script window on each keychain. Insert their exact birthday block with `wallet.insertCheckpoint(blockId: birthday)` at creation, then persist the wallet. Keep the existing chain of wallets that have already synced. The multi-wallet builder starts from the earliest wallet checkpoint with a bounded reorg rewind and accepts the default `SyncScanType`; `RecoveryScanType` is for the single-wallet builder.
+
+```dart
+final walletsById = {
+  for (final wallet in wallets)
+    wallet.descriptorId(keychain: KeychainKind.external_): wallet,
+};
+final builder = CbfBuilder();
+final components = builder.buildWithWallets(wallets: wallets);
+components.node.run();
+
+while (components.client.isRunning()) {
+  final updates = await components.client.updates();
+  for (final entry in updates.entries) {
+    walletsById[entry.key]!.applyUpdate(update: entry.value);
+    // Persist the wallet with its own persister after applying the update.
+    entry.value.dispose();
+  }
+}
+```
+
+Each call waits until filters reach the tip; call it again to wait for the next block. Drain `nextInfo()` and `nextWarning()` concurrently. Transport progress fractions describe downloads; `SyncedInfo` identifies a batch that reached its tip. A `NewChainHeightInfo.chainHeight` above the last `SyncedInfo.tip.height` indicates scanning again; older queued height events do not invalidate that caught-up tip. Apply and persist the batch before presenting it as durable wallet state.
+
+Use the same client's `chainTip()`, `broadcast(...)`, `submitPackage(...)` and `peerCount()` while the node runs. Call `rescan()` or `rescanFrom(height: height)` after the first caught-up batch: bip157 ignores these requests during initial synchronization. A rescan uses the script window already registered with the node. Rebuild the node when the wallet set changes. To stop, call `shutdown()` and wait for `node.awaitTermination(timeoutMillis: ...)` to return true before releasing node ownership and wallet locks; a false result means native teardown is still pending.
+
 ## License
 
 The Rust crate and generated bindings are dual-licensed under MIT or Apache 2.0 per the

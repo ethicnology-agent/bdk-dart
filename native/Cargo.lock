@@ -149,7 +149,7 @@ dependencies = [
 [[package]]
 name = "bdk-ffi"
 version = "3.2.0-alpha.0"
-source = "git+https://github.com/ethicnology-agent/bdk-ffi?rev=2550a33f550fd120d28e97d78ac8a68c2d81c009#2550a33f550fd120d28e97d78ac8a68c2d81c009"
+source = "git+https://github.com/ethicnology-agent/bdk-ffi?rev=732c1390a17f86fa86aae0f2468e0c60468cac42#732c1390a17f86fa86aae0f2468e0c60468cac42"
 dependencies = [
  "bdk_electrum",
  "bdk_esplora",
@@ -222,7 +222,7 @@ dependencies = [
 [[package]]
 name = "bdk_kyoto"
 version = "0.18.1"
-source = "git+https://github.com/ethicnology-agent/bdk-kyoto?rev=4e67a1618c0bdfb78b2e54279e6c2620a8547baa#4e67a1618c0bdfb78b2e54279e6c2620a8547baa"
+source = "git+https://github.com/ethicnology-agent/bdk-kyoto?rev=cdf8522c1756f328d9a0091f5839a3cbcf90420c#cdf8522c1756f328d9a0091f5839a3cbcf90420c"
 dependencies = [
  "bdk_wallet",
  "bip157",
