@@ -149,7 +149,7 @@ dependencies = [
 [[package]]
 name = "bdk-ffi"
 version = "3.2.0-alpha.0"
-source = "git+https://github.com/ethicnology-agent/bdk-ffi?rev=732c1390a17f86fa86aae0f2468e0c60468cac42#732c1390a17f86fa86aae0f2468e0c60468cac42"
+source = "git+https://github.com/ethicnology-agent/bdk-ffi?rev=1be981856e1e1f33072c6eafe04a802fce421b30#1be981856e1e1f33072c6eafe04a802fce421b30"
 dependencies = [
  "bdk_electrum",
  "bdk_esplora",

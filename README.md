@@ -118,7 +118,7 @@ Optional env vars:
 
 ### Long-running compact filter node
 
-Keep one `CbfNode` running for the selected wallets and apply each batch returned by `CbfClient.updates()`. The keys are the wallets' external descriptor identifiers. `update()` remains available for a single-wallet node created with `build(wallet: wallet)`.
+A Dart isolate or Flutter engine can disappear while the process stays alive. Use an owner lease and synchronous polling for a retained compact filter node. The native runtime consumes wallet updates independently of Dart; polling never registers an asynchronous Dart completion callback. The lease starts at `node.run()`. Renew it from the owning isolate's poll timer; expiry requests cancellation through the same native termination path as `shutdown()`.
 
 Create recovering wallets with `lookahead: 1000` to scan that script window on each keychain. Insert their exact birthday block with `wallet.insertCheckpoint(blockId: birthday)` at creation, then persist the wallet. Keep the existing chain of wallets that have already synced. The multi-wallet builder starts from the earliest wallet checkpoint with a bounded reorg rewind and accepts the default `SyncScanType`; `RecoveryScanType` is for the single-wallet builder.
 
@@ -127,23 +127,49 @@ final walletsById = {
   for (final wallet in wallets)
     wallet.descriptorId(keychain: KeychainKind.external_): wallet,
 };
-final builder = CbfBuilder();
+final initial = CbfBuilder();
+final builder = initial.ownerLeaseMillis(ttlMillis: 5000);
 final components = builder.buildWithWallets(wallets: wallets);
+builder.dispose();
+initial.dispose();
 components.node.run();
 
-while (components.client.isRunning()) {
-  final updates = await components.client.updates();
-  for (final entry in updates.entries) {
-    walletsById[entry.key]!.applyUpdate(update: entry.value);
-    // Persist the wallet with its own persister after applying the update.
-    entry.value.dispose();
+final timer = Timer.periodic(const Duration(milliseconds: 500), (timer) {
+  try {
+    components.client.renewLease();
+  } on NodeStoppedCbfException {
+    // Expiry, shutdown or overflow: still drain the retained work below.
   }
-}
+  while (true) {
+    final updates = components.client.pollUpdates();
+    if (updates == null) break;
+    for (final entry in updates.entries) {
+      walletsById[entry.key]!.applyUpdate(update: entry.value);
+      // Persist the wallet with its own persister before releasing this batch.
+      entry.value.dispose();
+    }
+  }
+  final info = components.client.drainInfo();
+  final warnings = components.client.drainWarnings();
+  final status = components.client.status();
+  // Publish info/warnings/status to the application's reactive service.
+  if (status.terminated) timer.cancel();
+});
 ```
 
-Each call waits until filters reach the tip; call it again to wait for the next block. Drain `nextInfo()` and `nextWarning()` concurrently. Transport progress fractions describe downloads; `SyncedInfo` identifies a batch that reached its tip. A `NewChainHeightInfo.chainHeight` above the last `SyncedInfo.tip.height` indicates scanning again; older queued height events do not invalidate that caught-up tip. Apply and persist the batch before presenting it as durable wallet state.
+Import `dart:async` for `Timer`. Retain the components and timer together. Keep each timer callback's processing within the lease budget, and choose a TTL longer than the expected timer delay and wallet processing time; a paused or overloaded owner can also lose its lease. Renewal cannot restart an expired or explicitly stopped node. An owner that must release its P2P connections on suspension should stop it explicitly. Long synchronous native work can delay the runtime's lease check. A native OS DNS resolver that never returns can delay runtime teardown; cancellation drops peer tasks, but termination is acknowledged only after the native thread actually exits.
 
-Use the same client's `chainTip()`, `broadcast(...)`, `submitPackage(...)` and `peerCount()` while the node runs. Call `rescan()` or `rescanFrom(height: height)` after the first caught-up batch: bip157 ignores these requests during initial synchronization. A rescan uses the script window already registered with the node. Rebuild the node when the wallet set changes. To stop, call `shutdown()` and wait for `node.awaitTermination(timeoutMillis: ...)` to return true before releasing node ownership and wallet locks; a false result means native teardown is still pending.
+`pollUpdates()` returns one complete descriptor-keyed batch, or `null` when none is queued. It works with either builder, preserves batch order and wallet routing, and remains drainable after shutdown. Apply and persist every returned update. Polling progress is a prepared-update boundary, not proof that the application has persisted it. `drainInfo()` and `drainWarnings()` remove the currently queued messages. `status()` reports `running`, `terminated`, the last prepared `syncedTip`, `lastError`, and overflow counters `infoDropped`/`warningsDropped`; `node.isTerminated()` provides the same synchronous termination acknowledgement.
+
+The update queue holds eight complete batches. Filling its last slot retains that batch, records an overflow error and stops the node; drain, apply and persist all queued batches, then rebuild from the persisted wallets. This bounds the output queue without silently dropping an update or letting an unattended peer keep producing work behind a stalled consumer. Individual batches and Kyoto's internal matching-block work are not byte-bounded. Information and warning queues each hold 64 messages. Progress of the same kind is coalesced; full log queues discard their oldest message and increment the status counters. See [bdk-ffi's CBF contract](https://github.com/ethicnology-agent/bdk-ffi/blob/bull/cbf/docs/CBF.md). `NewChainHeightInfo.chainHeight` above the last synced tip indicates scanning again. The fixed wallet/script snapshot requires a rebuild when wallets change or scripts are revealed beyond the captured lookahead. Rescans do not extend that snapshot; request them after first catch-up because the underlying node may ignore them during initial header synchronization.
+
+To stop from a polling owner, cancel the timer, call `shutdown()`, and poll `status().terminated` or `node.isTerminated()` from Dart until true before releasing wallet ownership. Continue draining/applying queued updates as appropriate. Then dispose the client and node. A surviving isolate can perform this same synchronous shutdown and disposal after the owner dies. A false termination status means native teardown is still pending.
+
+### Legacy asynchronous CBF API
+
+The existing unleased `CbfBuilder.build(...)`, `buildWithWallets(...)`, `update()`, `updates()`, `nextInfo()`, `nextWarning()` and `awaitTermination(...)` APIs remain available. Existing requester methods such as `chainTip()`, `broadcast(...)`, `submitPackage(...)` and `peerCount()` are also retained. Their native asynchronous completions can target callbacks belonging to the isolate that started them. **Pending foreign futures are unsafe if that isolate is killed or its Flutter engine is destroyed:** later completion, including shutdown, can abort the process. Use them only when the calling isolate is guaranteed to remain alive until every foreign future has completed.
+
+A leased client rejects legacy asynchronous update/info/warning receivers immediately with `InvalidConfigurationCbfException`, so it has one native update consumer. The leased polling owner should use only the synchronous timer surface; other asynchronous requester calls and `awaitTermination(...)` still require the lifetime guarantee above. An unleased legacy client has no owner-death deadline. `pollUpdates()`, `drainInfo()`, `drainWarnings()` and `renewLease()` require the leased mode. `status()` and `node.isTerminated()` can be queried in either mode.
 
 ## License
 

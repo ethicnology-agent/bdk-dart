@@ -1757,6 +1757,127 @@ class FfiConverterCbfComponents {
   }
 }
 
+class CbfStatus {
+  final bool running;
+  final bool terminated;
+  final BlockId? syncedTip;
+  final String? lastError;
+  final int infoDropped;
+  final int warningsDropped;
+  CbfStatus({
+    required this.running,
+    required this.terminated,
+    this.syncedTip,
+    this.lastError,
+    required this.infoDropped,
+    required this.warningsDropped,
+  });
+}
+
+class FfiConverterCbfStatus {
+  static CbfStatus lift(RustBuffer buf) {
+    return FfiConverterCbfStatus.read(buf.asUint8List()).value;
+  }
+
+  static LiftRetVal<CbfStatus> read(Uint8List buf) {
+    int new_offset = buf.offsetInBytes;
+    final running_lifted = FfiConverterBool.read(
+      Uint8List.view(buf.buffer, new_offset),
+    );
+    final running = running_lifted.value;
+    new_offset += running_lifted.bytesRead;
+    final terminated_lifted = FfiConverterBool.read(
+      Uint8List.view(buf.buffer, new_offset),
+    );
+    final terminated = terminated_lifted.value;
+    new_offset += terminated_lifted.bytesRead;
+    final syncedTip_lifted = FfiConverterOptionalBlockId.read(
+      Uint8List.view(buf.buffer, new_offset),
+    );
+    final syncedTip = syncedTip_lifted.value;
+    new_offset += syncedTip_lifted.bytesRead;
+    final lastError_lifted = FfiConverterOptionalString.read(
+      Uint8List.view(buf.buffer, new_offset),
+    );
+    final lastError = lastError_lifted.value;
+    new_offset += lastError_lifted.bytesRead;
+    final infoDropped_lifted = FfiConverterUInt64.read(
+      Uint8List.view(buf.buffer, new_offset),
+    );
+    final infoDropped = infoDropped_lifted.value;
+    new_offset += infoDropped_lifted.bytesRead;
+    final warningsDropped_lifted = FfiConverterUInt64.read(
+      Uint8List.view(buf.buffer, new_offset),
+    );
+    final warningsDropped = warningsDropped_lifted.value;
+    new_offset += warningsDropped_lifted.bytesRead;
+    return LiftRetVal(
+      CbfStatus(
+        running: running,
+        terminated: terminated,
+        syncedTip: syncedTip,
+        lastError: lastError,
+        infoDropped: infoDropped,
+        warningsDropped: warningsDropped,
+      ),
+      new_offset - buf.offsetInBytes,
+    );
+  }
+
+  static RustBuffer lower(CbfStatus value) {
+    final total_length =
+        FfiConverterBool.allocationSize(value.running) +
+        FfiConverterBool.allocationSize(value.terminated) +
+        FfiConverterOptionalBlockId.allocationSize(value.syncedTip) +
+        FfiConverterOptionalString.allocationSize(value.lastError) +
+        FfiConverterUInt64.allocationSize(value.infoDropped) +
+        FfiConverterUInt64.allocationSize(value.warningsDropped) +
+        0;
+    final buf = Uint8List(total_length);
+    write(value, buf);
+    return toRustBuffer(buf);
+  }
+
+  static int write(CbfStatus value, Uint8List buf) {
+    int new_offset = buf.offsetInBytes;
+    new_offset += FfiConverterBool.write(
+      value.running,
+      Uint8List.view(buf.buffer, new_offset),
+    );
+    new_offset += FfiConverterBool.write(
+      value.terminated,
+      Uint8List.view(buf.buffer, new_offset),
+    );
+    new_offset += FfiConverterOptionalBlockId.write(
+      value.syncedTip,
+      Uint8List.view(buf.buffer, new_offset),
+    );
+    new_offset += FfiConverterOptionalString.write(
+      value.lastError,
+      Uint8List.view(buf.buffer, new_offset),
+    );
+    new_offset += FfiConverterUInt64.write(
+      value.infoDropped,
+      Uint8List.view(buf.buffer, new_offset),
+    );
+    new_offset += FfiConverterUInt64.write(
+      value.warningsDropped,
+      Uint8List.view(buf.buffer, new_offset),
+    );
+    return new_offset - buf.offsetInBytes;
+  }
+
+  static int allocationSize(CbfStatus value) {
+    return FfiConverterBool.allocationSize(value.running) +
+        FfiConverterBool.allocationSize(value.terminated) +
+        FfiConverterOptionalBlockId.allocationSize(value.syncedTip) +
+        FfiConverterOptionalString.allocationSize(value.lastError) +
+        FfiConverterUInt64.allocationSize(value.infoDropped) +
+        FfiConverterUInt64.allocationSize(value.warningsDropped) +
+        0;
+  }
+}
+
 class Peer {
   final IpAddress address;
   final int? port;
@@ -23413,6 +23534,7 @@ abstract class CbfBuilderInterface {
   });
   CbfBuilder connections({required int connections});
   CbfBuilder onlyConfiguredPeers();
+  CbfBuilder ownerLeaseMillis({required int ttlMillis});
   CbfBuilder peers({required List<Peer> peers});
   CbfBuilder scanType({required ScanType scanType});
   CbfBuilder socks5Proxy({required Socks5Proxy proxy});
@@ -23531,6 +23653,18 @@ class CbfBuilder implements CbfBuilderInterface {
     );
   }
 
+  CbfBuilder ownerLeaseMillis({required int ttlMillis}) {
+    return rustCallWithLifter(
+      (status) => uniffi_bdkffi_fn_method_cbfbuilder_owner_lease_millis(
+        uniffiClonePointer(),
+        FfiConverterUInt64.lower(ttlMillis),
+        status,
+      ),
+      CbfBuilder.lift,
+      cbfExceptionErrorHandler,
+    );
+  }
+
   CbfBuilder peers({required List<Peer> peers}) {
     return rustCallWithLifter(
       (status) => uniffi_bdkffi_fn_method_cbfbuilder_peers(
@@ -23573,6 +23707,8 @@ abstract class CbfClientInterface {
   Future<Wtxid> broadcast({required Transaction transaction});
   Future<BlockId> chainTip();
   void connect({required Peer peer});
+  List<Info> drainInfo();
+  List<Warning> drainWarnings();
   Future<Header?> getHeader({required int height});
   bool isRunning();
   List<IpAddress> lookupHost({required String hostname});
@@ -23581,9 +23717,12 @@ abstract class CbfClientInterface {
   Future<Warning> nextWarning();
   Future<int> peerCount();
   Future<List<IpAddress>> peerInfo();
+  Map<String, Update>? pollUpdates();
+  void renewLease();
   void rescan();
   void rescanFrom({required int height});
   void shutdown();
+  CbfStatus status();
   Future<Wtxid> submitPackage({required List<Transaction> transactions});
   Future<Update> update();
   Future<Map<String, Update>> updates();
@@ -23677,6 +23816,28 @@ class CbfClient implements CbfClientInterface {
         status,
       );
     }, cbfExceptionErrorHandler);
+  }
+
+  List<Info> drainInfo() {
+    return rustCallWithLifter(
+      (status) => uniffi_bdkffi_fn_method_cbfclient_drain_info(
+        uniffiClonePointer(),
+        status,
+      ),
+      FfiConverterSequenceInfo.lift,
+      cbfExceptionErrorHandler,
+    );
+  }
+
+  List<Warning> drainWarnings() {
+    return rustCallWithLifter(
+      (status) => uniffi_bdkffi_fn_method_cbfclient_drain_warnings(
+        uniffiClonePointer(),
+        status,
+      ),
+      FfiConverterSequenceWarning.lift,
+      cbfExceptionErrorHandler,
+    );
   }
 
   Future<Header?> getHeader({required int height}) {
@@ -23774,6 +23935,26 @@ class CbfClient implements CbfClientInterface {
     );
   }
 
+  Map<String, Update>? pollUpdates() {
+    return rustCallWithLifter(
+      (status) => uniffi_bdkffi_fn_method_cbfclient_poll_updates(
+        uniffiClonePointer(),
+        status,
+      ),
+      FfiConverterOptionalMapStringToUpdate.lift,
+      cbfExceptionErrorHandler,
+    );
+  }
+
+  void renewLease() {
+    return rustCall((status) {
+      uniffi_bdkffi_fn_method_cbfclient_renew_lease(
+        uniffiClonePointer(),
+        status,
+      );
+    }, cbfExceptionErrorHandler);
+  }
+
   void rescan() {
     return rustCall((status) {
       uniffi_bdkffi_fn_method_cbfclient_rescan(uniffiClonePointer(), status);
@@ -23794,6 +23975,17 @@ class CbfClient implements CbfClientInterface {
     return rustCall((status) {
       uniffi_bdkffi_fn_method_cbfclient_shutdown(uniffiClonePointer(), status);
     }, cbfExceptionErrorHandler);
+  }
+
+  CbfStatus status() {
+    return rustCallWithLifter(
+      (status) => uniffi_bdkffi_fn_method_cbfclient_status(
+        uniffiClonePointer(),
+        status,
+      ),
+      FfiConverterCbfStatus.lift,
+      null,
+    );
   }
 
   Future<Wtxid> submitPackage({required List<Transaction> transactions}) {
@@ -23835,6 +24027,7 @@ class CbfClient implements CbfClientInterface {
 
 abstract class CbfNodeInterface {
   Future<bool> awaitTermination({required int timeoutMillis});
+  bool isTerminated();
   void run();
 }
 
@@ -23888,6 +24081,17 @@ class CbfNode implements CbfNodeInterface {
       ffi_bdkffi_rust_future_poll_i8,
       ffi_bdkffi_rust_future_complete_i8,
       ffi_bdkffi_rust_future_free_i8,
+      FfiConverterBool.lift,
+      null,
+    );
+  }
+
+  bool isTerminated() {
+    return rustCallWithLifter(
+      (status) => uniffi_bdkffi_fn_method_cbfnode_is_terminated(
+        uniffiClonePointer(),
+        status,
+      ),
       FfiConverterBool.lift,
       null,
     );
@@ -28412,6 +28616,56 @@ class FfiConverterOptionalBlockHash {
   }
 }
 
+class FfiConverterOptionalBlockId {
+  static BlockId? lift(RustBuffer buf) {
+    return FfiConverterOptionalBlockId.read(buf.asUint8List()).value;
+  }
+
+  static LiftRetVal<BlockId?> read(Uint8List buf) {
+    if (ByteData.view(buf.buffer, buf.offsetInBytes).getInt8(0) == 0) {
+      return LiftRetVal(null, 1);
+    }
+    final result = FfiConverterBlockId.read(
+      Uint8List.view(buf.buffer, buf.offsetInBytes + 1),
+    );
+    return LiftRetVal<BlockId?>(result.value, result.bytesRead + 1);
+  }
+
+  static int allocationSize([BlockId? value]) {
+    if (value == null) {
+      return 1;
+    }
+    return FfiConverterBlockId.allocationSize(value) + 1;
+  }
+
+  static RustBuffer lower(BlockId? value) {
+    if (value == null) {
+      return toRustBuffer(Uint8List.fromList([0]));
+    }
+    final length = FfiConverterOptionalBlockId.allocationSize(value);
+    final Pointer<Uint8> frameData = calloc<Uint8>(length);
+    final buf = frameData.asTypedList(length);
+    FfiConverterOptionalBlockId.write(value, buf);
+    final bytes = calloc<ForeignBytes>();
+    bytes.ref.len = length;
+    bytes.ref.data = frameData;
+    return RustBuffer.fromBytes(bytes.ref);
+  }
+
+  static int write(BlockId? value, Uint8List buf) {
+    if (value == null) {
+      buf[0] = 0;
+      return 1;
+    }
+    buf[0] = 1;
+    return FfiConverterBlockId.write(
+          value,
+          Uint8List.view(buf.buffer, buf.offsetInBytes + 1),
+        ) +
+        1;
+  }
+}
+
 class FfiConverterOptionalBool {
   static bool? lift(RustBuffer buf) {
     return FfiConverterOptionalBool.read(buf.asUint8List()).value;
@@ -29012,6 +29266,56 @@ class FfiConverterOptionalLockTime {
     }
     buf[0] = 1;
     return FfiConverterLockTime.write(
+          value,
+          Uint8List.view(buf.buffer, buf.offsetInBytes + 1),
+        ) +
+        1;
+  }
+}
+
+class FfiConverterOptionalMapStringToUpdate {
+  static Map<String, Update>? lift(RustBuffer buf) {
+    return FfiConverterOptionalMapStringToUpdate.read(buf.asUint8List()).value;
+  }
+
+  static LiftRetVal<Map<String, Update>?> read(Uint8List buf) {
+    if (ByteData.view(buf.buffer, buf.offsetInBytes).getInt8(0) == 0) {
+      return LiftRetVal(null, 1);
+    }
+    final result = FfiConverterMapStringToUpdate.read(
+      Uint8List.view(buf.buffer, buf.offsetInBytes + 1),
+    );
+    return LiftRetVal<Map<String, Update>?>(result.value, result.bytesRead + 1);
+  }
+
+  static int allocationSize([Map<String, Update>? value]) {
+    if (value == null) {
+      return 1;
+    }
+    return FfiConverterMapStringToUpdate.allocationSize(value) + 1;
+  }
+
+  static RustBuffer lower(Map<String, Update>? value) {
+    if (value == null) {
+      return toRustBuffer(Uint8List.fromList([0]));
+    }
+    final length = FfiConverterOptionalMapStringToUpdate.allocationSize(value);
+    final Pointer<Uint8> frameData = calloc<Uint8>(length);
+    final buf = frameData.asTypedList(length);
+    FfiConverterOptionalMapStringToUpdate.write(value, buf);
+    final bytes = calloc<ForeignBytes>();
+    bytes.ref.len = length;
+    bytes.ref.data = frameData;
+    return RustBuffer.fromBytes(bytes.ref);
+  }
+
+  static int write(Map<String, Update>? value, Uint8List buf) {
+    if (value == null) {
+      buf[0] = 0;
+      return 1;
+    }
+    buf[0] = 1;
+    return FfiConverterMapStringToUpdate.write(
           value,
           Uint8List.view(buf.buffer, buf.offsetInBytes + 1),
         ) +
@@ -30467,6 +30771,49 @@ class FfiConverterSequenceEvictedTx {
   }
 }
 
+class FfiConverterSequenceInfo {
+  static List<Info> lift(RustBuffer buf) {
+    return FfiConverterSequenceInfo.read(buf.asUint8List()).value;
+  }
+
+  static LiftRetVal<List<Info>> read(Uint8List buf) {
+    List<Info> res = [];
+    final length = buf.buffer.asByteData(buf.offsetInBytes).getInt32(0);
+    int offset = buf.offsetInBytes + 4;
+    for (var i = 0; i < length; i++) {
+      final ret = FfiConverterInfo.read(Uint8List.view(buf.buffer, offset));
+      offset += ret.bytesRead;
+      res.add(ret.value);
+    }
+    return LiftRetVal(res, offset - buf.offsetInBytes);
+  }
+
+  static int write(List<Info> value, Uint8List buf) {
+    buf.buffer.asByteData(buf.offsetInBytes).setInt32(0, value.length);
+    int offset = buf.offsetInBytes + 4;
+    for (var i = 0; i < value.length; i++) {
+      offset += FfiConverterInfo.write(
+        value[i],
+        Uint8List.view(buf.buffer, offset),
+      );
+    }
+    return offset - buf.offsetInBytes;
+  }
+
+  static int allocationSize(List<Info> value) {
+    return value
+            .map((l) => FfiConverterInfo.allocationSize(l))
+            .fold(0, (a, b) => a + b) +
+        4;
+  }
+
+  static RustBuffer lower(List<Info> value) {
+    final buf = Uint8List(allocationSize(value));
+    write(value, buf);
+    return toRustBuffer(buf);
+  }
+}
+
 class FfiConverterSequenceInput {
   static List<Input> lift(RustBuffer buf) {
     return FfiConverterSequenceInput.read(buf.asUint8List()).value;
@@ -31618,6 +31965,49 @@ class FfiConverterSequenceWalletKeychain {
   }
 
   static RustBuffer lower(List<WalletKeychain> value) {
+    final buf = Uint8List(allocationSize(value));
+    write(value, buf);
+    return toRustBuffer(buf);
+  }
+}
+
+class FfiConverterSequenceWarning {
+  static List<Warning> lift(RustBuffer buf) {
+    return FfiConverterSequenceWarning.read(buf.asUint8List()).value;
+  }
+
+  static LiftRetVal<List<Warning>> read(Uint8List buf) {
+    List<Warning> res = [];
+    final length = buf.buffer.asByteData(buf.offsetInBytes).getInt32(0);
+    int offset = buf.offsetInBytes + 4;
+    for (var i = 0; i < length; i++) {
+      final ret = FfiConverterWarning.read(Uint8List.view(buf.buffer, offset));
+      offset += ret.bytesRead;
+      res.add(ret.value);
+    }
+    return LiftRetVal(res, offset - buf.offsetInBytes);
+  }
+
+  static int write(List<Warning> value, Uint8List buf) {
+    buf.buffer.asByteData(buf.offsetInBytes).setInt32(0, value.length);
+    int offset = buf.offsetInBytes + 4;
+    for (var i = 0; i < value.length; i++) {
+      offset += FfiConverterWarning.write(
+        value[i],
+        Uint8List.view(buf.buffer, offset),
+      );
+    }
+    return offset - buf.offsetInBytes;
+  }
+
+  static int allocationSize(List<Warning> value) {
+    return value
+            .map((l) => FfiConverterWarning.allocationSize(l))
+            .fold(0, (a, b) => a + b) +
+        4;
+  }
+
+  static RustBuffer lower(List<Warning> value) {
     final buf = Uint8List(allocationSize(value));
     write(value, buf);
     return toRustBuffer(buf);
@@ -34275,6 +34665,15 @@ external Pointer<Void> uniffi_bdkffi_fn_method_cbfbuilder_only_configured_peers(
   Pointer<RustCallStatus> uniffiStatus,
 );
 
+@Native<Pointer<Void> Function(Pointer<Void>, Uint64, Pointer<RustCallStatus>)>(
+  assetId: _uniffiAssetId,
+)
+external Pointer<Void> uniffi_bdkffi_fn_method_cbfbuilder_owner_lease_millis(
+  Pointer<Void> ptr,
+  int ttl_millis,
+  Pointer<RustCallStatus> uniffiStatus,
+);
+
 @Native<
   Pointer<Void> Function(Pointer<Void>, RustBuffer, Pointer<RustCallStatus>)
 >(assetId: _uniffiAssetId)
@@ -34348,6 +34747,22 @@ external void uniffi_bdkffi_fn_method_cbfclient_connect(
   Pointer<RustCallStatus> uniffiStatus,
 );
 
+@Native<RustBuffer Function(Pointer<Void>, Pointer<RustCallStatus>)>(
+  assetId: _uniffiAssetId,
+)
+external RustBuffer uniffi_bdkffi_fn_method_cbfclient_drain_info(
+  Pointer<Void> ptr,
+  Pointer<RustCallStatus> uniffiStatus,
+);
+
+@Native<RustBuffer Function(Pointer<Void>, Pointer<RustCallStatus>)>(
+  assetId: _uniffiAssetId,
+)
+external RustBuffer uniffi_bdkffi_fn_method_cbfclient_drain_warnings(
+  Pointer<Void> ptr,
+  Pointer<RustCallStatus> uniffiStatus,
+);
+
 @Native<Pointer<Void> Function(Pointer<Void>, Uint32)>(assetId: _uniffiAssetId)
 external Pointer<Void> uniffi_bdkffi_fn_method_cbfclient_get_header(
   Pointer<Void> ptr,
@@ -34396,6 +34811,22 @@ external Pointer<Void> uniffi_bdkffi_fn_method_cbfclient_peer_info(
   Pointer<Void> ptr,
 );
 
+@Native<RustBuffer Function(Pointer<Void>, Pointer<RustCallStatus>)>(
+  assetId: _uniffiAssetId,
+)
+external RustBuffer uniffi_bdkffi_fn_method_cbfclient_poll_updates(
+  Pointer<Void> ptr,
+  Pointer<RustCallStatus> uniffiStatus,
+);
+
+@Native<Void Function(Pointer<Void>, Pointer<RustCallStatus>)>(
+  assetId: _uniffiAssetId,
+)
+external void uniffi_bdkffi_fn_method_cbfclient_renew_lease(
+  Pointer<Void> ptr,
+  Pointer<RustCallStatus> uniffiStatus,
+);
+
 @Native<Void Function(Pointer<Void>, Pointer<RustCallStatus>)>(
   assetId: _uniffiAssetId,
 )
@@ -34417,6 +34848,14 @@ external void uniffi_bdkffi_fn_method_cbfclient_rescan_from(
   assetId: _uniffiAssetId,
 )
 external void uniffi_bdkffi_fn_method_cbfclient_shutdown(
+  Pointer<Void> ptr,
+  Pointer<RustCallStatus> uniffiStatus,
+);
+
+@Native<RustBuffer Function(Pointer<Void>, Pointer<RustCallStatus>)>(
+  assetId: _uniffiAssetId,
+)
+external RustBuffer uniffi_bdkffi_fn_method_cbfclient_status(
   Pointer<Void> ptr,
   Pointer<RustCallStatus> uniffiStatus,
 );
@@ -34459,6 +34898,14 @@ external void uniffi_bdkffi_fn_free_cbfnode(
 external Pointer<Void> uniffi_bdkffi_fn_method_cbfnode_await_termination(
   Pointer<Void> ptr,
   int timeout_millis,
+);
+
+@Native<Int8 Function(Pointer<Void>, Pointer<RustCallStatus>)>(
+  assetId: _uniffiAssetId,
+)
+external int uniffi_bdkffi_fn_method_cbfnode_is_terminated(
+  Pointer<Void> ptr,
+  Pointer<RustCallStatus> uniffiStatus,
 );
 
 @Native<Void Function(Pointer<Void>, Pointer<RustCallStatus>)>(
@@ -37486,6 +37933,9 @@ external int uniffi_bdkffi_checksum_method_cbfbuilder_connections();
 external int uniffi_bdkffi_checksum_method_cbfbuilder_only_configured_peers();
 
 @Native<Uint16 Function()>(assetId: _uniffiAssetId)
+external int uniffi_bdkffi_checksum_method_cbfbuilder_owner_lease_millis();
+
+@Native<Uint16 Function()>(assetId: _uniffiAssetId)
 external int uniffi_bdkffi_checksum_method_cbfbuilder_peers();
 
 @Native<Uint16 Function()>(assetId: _uniffiAssetId)
@@ -37505,6 +37955,12 @@ external int uniffi_bdkffi_checksum_method_cbfclient_chain_tip();
 
 @Native<Uint16 Function()>(assetId: _uniffiAssetId)
 external int uniffi_bdkffi_checksum_method_cbfclient_connect();
+
+@Native<Uint16 Function()>(assetId: _uniffiAssetId)
+external int uniffi_bdkffi_checksum_method_cbfclient_drain_info();
+
+@Native<Uint16 Function()>(assetId: _uniffiAssetId)
+external int uniffi_bdkffi_checksum_method_cbfclient_drain_warnings();
 
 @Native<Uint16 Function()>(assetId: _uniffiAssetId)
 external int uniffi_bdkffi_checksum_method_cbfclient_get_header();
@@ -37531,6 +37987,12 @@ external int uniffi_bdkffi_checksum_method_cbfclient_peer_count();
 external int uniffi_bdkffi_checksum_method_cbfclient_peer_info();
 
 @Native<Uint16 Function()>(assetId: _uniffiAssetId)
+external int uniffi_bdkffi_checksum_method_cbfclient_poll_updates();
+
+@Native<Uint16 Function()>(assetId: _uniffiAssetId)
+external int uniffi_bdkffi_checksum_method_cbfclient_renew_lease();
+
+@Native<Uint16 Function()>(assetId: _uniffiAssetId)
 external int uniffi_bdkffi_checksum_method_cbfclient_rescan();
 
 @Native<Uint16 Function()>(assetId: _uniffiAssetId)
@@ -37538,6 +38000,9 @@ external int uniffi_bdkffi_checksum_method_cbfclient_rescan_from();
 
 @Native<Uint16 Function()>(assetId: _uniffiAssetId)
 external int uniffi_bdkffi_checksum_method_cbfclient_shutdown();
+
+@Native<Uint16 Function()>(assetId: _uniffiAssetId)
+external int uniffi_bdkffi_checksum_method_cbfclient_status();
 
 @Native<Uint16 Function()>(assetId: _uniffiAssetId)
 external int uniffi_bdkffi_checksum_method_cbfclient_submit_package();
@@ -37550,6 +38015,9 @@ external int uniffi_bdkffi_checksum_method_cbfclient_updates();
 
 @Native<Uint16 Function()>(assetId: _uniffiAssetId)
 external int uniffi_bdkffi_checksum_method_cbfnode_await_termination();
+
+@Native<Uint16 Function()>(assetId: _uniffiAssetId)
+external int uniffi_bdkffi_checksum_method_cbfnode_is_terminated();
 
 @Native<Uint16 Function()>(assetId: _uniffiAssetId)
 external int uniffi_bdkffi_checksum_method_cbfnode_run();
@@ -38567,6 +39035,9 @@ void _checkApiChecksums() {
       11621) {
     throw UniffiInternalError.panicked("UniFFI API checksum mismatch");
   }
+  if (uniffi_bdkffi_checksum_method_cbfbuilder_owner_lease_millis() != 15698) {
+    throw UniffiInternalError.panicked("UniFFI API checksum mismatch");
+  }
   if (uniffi_bdkffi_checksum_method_cbfbuilder_peers() != 25020) {
     throw UniffiInternalError.panicked("UniFFI API checksum mismatch");
   }
@@ -38586,6 +39057,12 @@ void _checkApiChecksums() {
     throw UniffiInternalError.panicked("UniFFI API checksum mismatch");
   }
   if (uniffi_bdkffi_checksum_method_cbfclient_connect() != 29023) {
+    throw UniffiInternalError.panicked("UniFFI API checksum mismatch");
+  }
+  if (uniffi_bdkffi_checksum_method_cbfclient_drain_info() != 34749) {
+    throw UniffiInternalError.panicked("UniFFI API checksum mismatch");
+  }
+  if (uniffi_bdkffi_checksum_method_cbfclient_drain_warnings() != 12037) {
     throw UniffiInternalError.panicked("UniFFI API checksum mismatch");
   }
   if (uniffi_bdkffi_checksum_method_cbfclient_get_header() != 42145) {
@@ -38613,6 +39090,12 @@ void _checkApiChecksums() {
   if (uniffi_bdkffi_checksum_method_cbfclient_peer_info() != 62164) {
     throw UniffiInternalError.panicked("UniFFI API checksum mismatch");
   }
+  if (uniffi_bdkffi_checksum_method_cbfclient_poll_updates() != 41634) {
+    throw UniffiInternalError.panicked("UniFFI API checksum mismatch");
+  }
+  if (uniffi_bdkffi_checksum_method_cbfclient_renew_lease() != 12826) {
+    throw UniffiInternalError.panicked("UniFFI API checksum mismatch");
+  }
   if (uniffi_bdkffi_checksum_method_cbfclient_rescan() != 27313) {
     throw UniffiInternalError.panicked("UniFFI API checksum mismatch");
   }
@@ -38620,6 +39103,9 @@ void _checkApiChecksums() {
     throw UniffiInternalError.panicked("UniFFI API checksum mismatch");
   }
   if (uniffi_bdkffi_checksum_method_cbfclient_shutdown() != 24919) {
+    throw UniffiInternalError.panicked("UniFFI API checksum mismatch");
+  }
+  if (uniffi_bdkffi_checksum_method_cbfclient_status() != 30231) {
     throw UniffiInternalError.panicked("UniFFI API checksum mismatch");
   }
   if (uniffi_bdkffi_checksum_method_cbfclient_submit_package() != 62254) {
@@ -38634,7 +39120,10 @@ void _checkApiChecksums() {
   if (uniffi_bdkffi_checksum_method_cbfnode_await_termination() != 23789) {
     throw UniffiInternalError.panicked("UniFFI API checksum mismatch");
   }
-  if (uniffi_bdkffi_checksum_method_cbfnode_run() != 60067) {
+  if (uniffi_bdkffi_checksum_method_cbfnode_is_terminated() != 9781) {
+    throw UniffiInternalError.panicked("UniFFI API checksum mismatch");
+  }
+  if (uniffi_bdkffi_checksum_method_cbfnode_run() != 16282) {
     throw UniffiInternalError.panicked("UniFFI API checksum mismatch");
   }
   if (uniffi_bdkffi_checksum_method_signerscontainer_is_empty() != 1291) {
