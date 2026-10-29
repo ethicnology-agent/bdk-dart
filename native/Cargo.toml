@@ -18,7 +18,7 @@ name = "uniffi-bindgen"
 path = "uniffi-bindgen.rs"
 
 [dependencies]
-bdk-ffi = { package = "bdk-ffi", git = "https://github.com/ethicnology-agent/bdk-ffi", rev = "1be981856e1e1f33072c6eafe04a802fce421b30" }
+bdk-ffi = { package = "bdk-ffi", git = "https://github.com/ethicnology-agent/bdk-ffi", rev = "0bbd32ed6f403df00ff2baf5fd910ed796e8c2bc" }
 uniffi = { version = "=0.31.2", features = ["cli"] }
 uniffi-dart = { git = "https://github.com/Uniffi-Dart/uniffi-dart", tag = "v0.2.1+v0.31.2" }
 camino = "1.2"

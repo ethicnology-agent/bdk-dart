@@ -70,11 +70,12 @@ void _owner(Map<String, Object> parameters) {
   // leaves no foreign future with a callback address belonging to its Dart VM.
   Timer.periodic(const Duration(milliseconds: 40), (_) {
     components.client.renewLease();
-    final updates = components.client.pollUpdates();
-    if (updates != null) {
-      for (final update in updates.values) {
+    final batch = components.client.pollUpdateBatch();
+    if (batch != null) {
+      for (final update in batch.updates.values) {
         update.dispose();
       }
+      batch.scannedTip.hash.dispose();
     }
     for (final info in components.client.drainInfo()) {
       if (info is bdk.SyncedInfo) info.tip.hash.dispose();
@@ -212,6 +213,7 @@ void main() {
             expect(status.lastError, contains('lease'));
           }
           // Still synchronous after owner death, including repeated shutdown.
+          expect(client.pollUpdateBatch(), isNull);
           expect(client.pollUpdates(), isNull);
           client.drainInfo();
           client.drainWarnings();
@@ -244,6 +246,7 @@ void main() {
   test('leased clients reject legacy receivers before they can wait', () async {
     final components = _components(1, leased: true);
     try {
+      expect(components.client.pollUpdateBatch(), isNull);
       expect(components.client.pollUpdates(), isNull);
       expect(components.client.drainInfo(), isEmpty);
       expect(components.client.drainWarnings(), isEmpty);
@@ -277,6 +280,10 @@ void main() {
       }
 
       try {
+        expect(
+          components.client.pollUpdateBatch,
+          throwsA(isA<bdk.InvalidConfigurationCbfException>()),
+        );
         final pending = [
           finishes(components.client.updates()),
           finishes(components.client.nextInfo()),

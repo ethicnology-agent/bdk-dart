@@ -1878,6 +1878,85 @@ class FfiConverterCbfStatus {
   }
 }
 
+class CbfUpdateBatch {
+  final Map<String, Update> updates;
+  final BlockId scannedTip;
+  final bool syncedToTip;
+  CbfUpdateBatch({
+    required this.updates,
+    required this.scannedTip,
+    required this.syncedToTip,
+  });
+}
+
+class FfiConverterCbfUpdateBatch {
+  static CbfUpdateBatch lift(RustBuffer buf) {
+    return FfiConverterCbfUpdateBatch.read(buf.asUint8List()).value;
+  }
+
+  static LiftRetVal<CbfUpdateBatch> read(Uint8List buf) {
+    int new_offset = buf.offsetInBytes;
+    final updates_lifted = FfiConverterMapStringToUpdate.read(
+      Uint8List.view(buf.buffer, new_offset),
+    );
+    final updates = updates_lifted.value;
+    new_offset += updates_lifted.bytesRead;
+    final scannedTip_lifted = FfiConverterBlockId.read(
+      Uint8List.view(buf.buffer, new_offset),
+    );
+    final scannedTip = scannedTip_lifted.value;
+    new_offset += scannedTip_lifted.bytesRead;
+    final syncedToTip_lifted = FfiConverterBool.read(
+      Uint8List.view(buf.buffer, new_offset),
+    );
+    final syncedToTip = syncedToTip_lifted.value;
+    new_offset += syncedToTip_lifted.bytesRead;
+    return LiftRetVal(
+      CbfUpdateBatch(
+        updates: updates,
+        scannedTip: scannedTip,
+        syncedToTip: syncedToTip,
+      ),
+      new_offset - buf.offsetInBytes,
+    );
+  }
+
+  static RustBuffer lower(CbfUpdateBatch value) {
+    final total_length =
+        FfiConverterMapStringToUpdate.allocationSize(value.updates) +
+        FfiConverterBlockId.allocationSize(value.scannedTip) +
+        FfiConverterBool.allocationSize(value.syncedToTip) +
+        0;
+    final buf = Uint8List(total_length);
+    write(value, buf);
+    return toRustBuffer(buf);
+  }
+
+  static int write(CbfUpdateBatch value, Uint8List buf) {
+    int new_offset = buf.offsetInBytes;
+    new_offset += FfiConverterMapStringToUpdate.write(
+      value.updates,
+      Uint8List.view(buf.buffer, new_offset),
+    );
+    new_offset += FfiConverterBlockId.write(
+      value.scannedTip,
+      Uint8List.view(buf.buffer, new_offset),
+    );
+    new_offset += FfiConverterBool.write(
+      value.syncedToTip,
+      Uint8List.view(buf.buffer, new_offset),
+    );
+    return new_offset - buf.offsetInBytes;
+  }
+
+  static int allocationSize(CbfUpdateBatch value) {
+    return FfiConverterMapStringToUpdate.allocationSize(value.updates) +
+        FfiConverterBlockId.allocationSize(value.scannedTip) +
+        FfiConverterBool.allocationSize(value.syncedToTip) +
+        0;
+  }
+}
+
 class Peer {
   final IpAddress address;
   final int? port;
@@ -17479,6 +17558,12 @@ class FfiConverterRecoveryPoint {
           lifted.value,
           lifted.bytesRead - subview.offsetInBytes + 4,
         );
+      case 5:
+        final lifted = LastCheckpointRecoveryPoint.read(subview);
+        return LiftRetVal<RecoveryPoint>(
+          lifted.value,
+          lifted.bytesRead - subview.offsetInBytes + 4,
+        );
       default:
         throw UniffiInternalError(
           UniffiInternalError.unexpectedEnumCase,
@@ -17618,6 +17703,34 @@ class OtherRecoveryPoint extends RecoveryPoint {
       birthday,
       Uint8List.view(buf.buffer, new_offset),
     );
+    return new_offset;
+  }
+}
+
+class LastCheckpointRecoveryPoint extends RecoveryPoint {
+  LastCheckpointRecoveryPoint();
+  LastCheckpointRecoveryPoint._();
+  static LiftRetVal<LastCheckpointRecoveryPoint> read(Uint8List buf) {
+    int new_offset = buf.offsetInBytes;
+    return LiftRetVal(LastCheckpointRecoveryPoint._(), new_offset);
+  }
+
+  @override
+  RustBuffer lower() {
+    final buf = Uint8List(allocationSize());
+    write(buf);
+    return toRustBuffer(buf);
+  }
+
+  @override
+  int allocationSize() {
+    return 4;
+  }
+
+  @override
+  int write(Uint8List buf) {
+    buf.buffer.asByteData(buf.offsetInBytes).setInt32(0, 5);
+    int new_offset = buf.offsetInBytes + 4;
     return new_offset;
   }
 }
@@ -23717,6 +23830,7 @@ abstract class CbfClientInterface {
   Future<Warning> nextWarning();
   Future<int> peerCount();
   Future<List<IpAddress>> peerInfo();
+  CbfUpdateBatch? pollUpdateBatch();
   Map<String, Update>? pollUpdates();
   void renewLease();
   void rescan();
@@ -23931,6 +24045,17 @@ class CbfClient implements CbfClientInterface {
       ffi_bdkffi_rust_future_complete_rust_buffer,
       ffi_bdkffi_rust_future_free_rust_buffer,
       FfiConverterSequenceIpAddress.lift,
+      cbfExceptionErrorHandler,
+    );
+  }
+
+  CbfUpdateBatch? pollUpdateBatch() {
+    return rustCallWithLifter(
+      (status) => uniffi_bdkffi_fn_method_cbfclient_poll_update_batch(
+        uniffiClonePointer(),
+        status,
+      ),
+      FfiConverterOptionalCbfUpdateBatch.lift,
       cbfExceptionErrorHandler,
     );
   }
@@ -28759,6 +28884,56 @@ class FfiConverterOptionalCanonicalTx {
     }
     buf[0] = 1;
     return FfiConverterCanonicalTx.write(
+          value,
+          Uint8List.view(buf.buffer, buf.offsetInBytes + 1),
+        ) +
+        1;
+  }
+}
+
+class FfiConverterOptionalCbfUpdateBatch {
+  static CbfUpdateBatch? lift(RustBuffer buf) {
+    return FfiConverterOptionalCbfUpdateBatch.read(buf.asUint8List()).value;
+  }
+
+  static LiftRetVal<CbfUpdateBatch?> read(Uint8List buf) {
+    if (ByteData.view(buf.buffer, buf.offsetInBytes).getInt8(0) == 0) {
+      return LiftRetVal(null, 1);
+    }
+    final result = FfiConverterCbfUpdateBatch.read(
+      Uint8List.view(buf.buffer, buf.offsetInBytes + 1),
+    );
+    return LiftRetVal<CbfUpdateBatch?>(result.value, result.bytesRead + 1);
+  }
+
+  static int allocationSize([CbfUpdateBatch? value]) {
+    if (value == null) {
+      return 1;
+    }
+    return FfiConverterCbfUpdateBatch.allocationSize(value) + 1;
+  }
+
+  static RustBuffer lower(CbfUpdateBatch? value) {
+    if (value == null) {
+      return toRustBuffer(Uint8List.fromList([0]));
+    }
+    final length = FfiConverterOptionalCbfUpdateBatch.allocationSize(value);
+    final Pointer<Uint8> frameData = calloc<Uint8>(length);
+    final buf = frameData.asTypedList(length);
+    FfiConverterOptionalCbfUpdateBatch.write(value, buf);
+    final bytes = calloc<ForeignBytes>();
+    bytes.ref.len = length;
+    bytes.ref.data = frameData;
+    return RustBuffer.fromBytes(bytes.ref);
+  }
+
+  static int write(CbfUpdateBatch? value, Uint8List buf) {
+    if (value == null) {
+      buf[0] = 0;
+      return 1;
+    }
+    buf[0] = 1;
+    return FfiConverterCbfUpdateBatch.write(
           value,
           Uint8List.view(buf.buffer, buf.offsetInBytes + 1),
         ) +
@@ -34814,6 +34989,14 @@ external Pointer<Void> uniffi_bdkffi_fn_method_cbfclient_peer_info(
 @Native<RustBuffer Function(Pointer<Void>, Pointer<RustCallStatus>)>(
   assetId: _uniffiAssetId,
 )
+external RustBuffer uniffi_bdkffi_fn_method_cbfclient_poll_update_batch(
+  Pointer<Void> ptr,
+  Pointer<RustCallStatus> uniffiStatus,
+);
+
+@Native<RustBuffer Function(Pointer<Void>, Pointer<RustCallStatus>)>(
+  assetId: _uniffiAssetId,
+)
 external RustBuffer uniffi_bdkffi_fn_method_cbfclient_poll_updates(
   Pointer<Void> ptr,
   Pointer<RustCallStatus> uniffiStatus,
@@ -37987,6 +38170,9 @@ external int uniffi_bdkffi_checksum_method_cbfclient_peer_count();
 external int uniffi_bdkffi_checksum_method_cbfclient_peer_info();
 
 @Native<Uint16 Function()>(assetId: _uniffiAssetId)
+external int uniffi_bdkffi_checksum_method_cbfclient_poll_update_batch();
+
+@Native<Uint16 Function()>(assetId: _uniffiAssetId)
 external int uniffi_bdkffi_checksum_method_cbfclient_poll_updates();
 
 @Native<Uint16 Function()>(assetId: _uniffiAssetId)
@@ -39090,7 +39276,10 @@ void _checkApiChecksums() {
   if (uniffi_bdkffi_checksum_method_cbfclient_peer_info() != 62164) {
     throw UniffiInternalError.panicked("UniFFI API checksum mismatch");
   }
-  if (uniffi_bdkffi_checksum_method_cbfclient_poll_updates() != 41634) {
+  if (uniffi_bdkffi_checksum_method_cbfclient_poll_update_batch() != 46034) {
+    throw UniffiInternalError.panicked("UniFFI API checksum mismatch");
+  }
+  if (uniffi_bdkffi_checksum_method_cbfclient_poll_updates() != 34020) {
     throw UniffiInternalError.panicked("UniFFI API checksum mismatch");
   }
   if (uniffi_bdkffi_checksum_method_cbfclient_renew_lease() != 12826) {

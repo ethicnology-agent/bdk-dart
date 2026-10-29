@@ -47,6 +47,7 @@ void main() {
       'sync',
       'SegWit recovery',
       'exact checkpoint recovery',
+      'saved checkpoint recovery',
     ]) {
       test('$label supports acknowledged shutdown before run', () async {
         final hash = BlockHash.fromString(hex: exactHash);
@@ -56,11 +57,18 @@ void main() {
             usedScriptIndex: 100,
             checkpoint: SegwitActivationRecoveryPoint(),
           ),
+          'saved checkpoint recovery' => RecoveryScanType(
+            usedScriptIndex: 100,
+            checkpoint: LastCheckpointRecoveryPoint(),
+          ),
           _ => RecoveryScanType(
             usedScriptIndex: 100,
             checkpoint: OtherRecoveryPoint(BlockId(height: 973434, hash: hash)),
           ),
         };
+        if (label == 'saved checkpoint recovery') {
+          wallet.insertCheckpoint(blockId: BlockId(height: 973434, hash: hash));
+        }
         final initial = CbfBuilder();
         final configured = initial.scanType(scanType: scanType);
         final peersOnly = configured.onlyConfiguredPeers();
